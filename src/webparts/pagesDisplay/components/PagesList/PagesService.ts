@@ -274,10 +274,17 @@ class PagesService {
         // Date Range Filter
         if (dateRangesIndex && dateRangesIndex > 0) {
           const today = new Date();
-          const endDate = today.toISOString();
+          const currentYear = today.getFullYear();
+
+          // Set the start date to the start of the year corresponding to (currentYear - dateRangesIndex)
           const startDate = new Date(
-            today.setFullYear(today.getFullYear() - dateRangesIndex)
-          ).toISOString();
+            Date.UTC(currentYear - dateRangesIndex, 0, 1)
+          ).toISOString(); // January 1st of the target year
+
+          // Set the end date to one year after the start date (start of the next year)
+          const endDate = new Date(
+            Date.UTC(currentYear - dateRangesIndex + 1, 0, 1)
+          ).toISOString(); // January 1st of the next year
           filterQuery += ` and ModifiedDate ge datetime'${startDate}' and ModifiedDate le datetime'${endDate}'`;
         }
 
