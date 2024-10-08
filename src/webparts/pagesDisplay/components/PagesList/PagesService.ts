@@ -285,7 +285,7 @@ class PagesService {
           const endDate = new Date(
             Date.UTC(currentYear - dateRangesIndex + 1, 0, 1)
           ).toISOString(); // January 1st of the next year
-          filterQuery += ` and ModifiedDate ge datetime'${startDate}' and ModifiedDate le datetime'${endDate}'`;
+          filterQuery = `ModifiedDate ge datetime'${startDate}' and ModifiedDate le datetime'${endDate}' and ${filterQuery}`;
         }
 
         // Additional filters
