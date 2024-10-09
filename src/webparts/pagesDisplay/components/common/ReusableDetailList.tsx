@@ -45,7 +45,7 @@ const classNames = mergeStyleSets({
   focusZone: {
     height: "100%",
     maxHeight: "600px",
-    overflowY: "auto",
+    overflowY: "scroll",
     overflowX: "hidden",
     "scrollbar-width": "thin",
     "scrollbar-color": "#f5f5f5",
@@ -119,7 +119,24 @@ export class ReusableDetailList extends React.Component<
     this.containerRef = React.createRef(); // Ref for the scrollable container
   }
 
-  componentDidMount(): void {}
+  componentDidMount(): void {
+    const { initialScrollTop } = this.props;
+
+    const focusZoneElement = document.querySelectorAll(".focusCustomClass");
+
+    if (this._selectionChanged) {
+      this._selectionChanged = false;
+      return;
+    }
+    if (focusZoneElement.length > 0) {
+      // Restore scroll position if props change
+      focusZoneElement[0].scrollTop = initialScrollTop;
+    }
+    this.setState({ isLoading: true });
+    setTimeout(() => {
+      this.setState({ isLoading: false });
+    }, 100);
+  }
 
   componentDidUpdate(prevProps: any, prevState: any) {
     const { initialScrollTop } = this.props;
@@ -134,7 +151,6 @@ export class ReusableDetailList extends React.Component<
       focusZoneElement[0].scrollTop = initialScrollTop;
     }
   }
-  componentWillUnmount() {}
 
   handleScroll = (event: React.UIEvent<HTMLElement>) => {
     const container = event.currentTarget; // The scrollable element itself
