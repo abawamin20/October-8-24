@@ -378,9 +378,14 @@ class PagesService {
     lastPosition: number | null = 1
   ) => {
     try {
+      let sitePath = this.context.pageContext.web.serverRelativeUrl; // Dynamically gets the server-relative URL of the current site
+      let listPath = "/SitePages"; // The path to the list
+
       let listUrl = `${
         this.context.pageContext.web.absoluteUrl
-      }/_api/web/GetListUsingPath(DecodedUrl=@a1)/RenderListDataAsStream?@a1=%27%2Fsites%2FDevelopment%2FSitePages%27&TryNewExperienceSingle=TRUE&SortField=${orderBy}&SortDir=${
+      }/_api/web/GetListUsingPath(DecodedUrl=@a1)/RenderListDataAsStream?@a1=%27${encodeURIComponent(
+        sitePath + listPath
+      )}%27&TryNewExperienceSingle=TRUE&SortField=${orderBy}&SortDir=${
         isDescending ? "Desc" : "Asc"
       }`;
 
