@@ -83,7 +83,7 @@ const CellRender = (props: {
               window.open(`${window.origin}${item.FileRef}`, "_blank");
             }}
           >
-            {item[columnName]}
+            {item["FileLeafRef"]}
           </a>
         );
       } else {
