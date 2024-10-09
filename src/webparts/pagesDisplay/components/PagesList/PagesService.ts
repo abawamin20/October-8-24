@@ -375,7 +375,7 @@ class PagesService {
     filters: FilterDetail[],
     columnInfos: IColumnInfo[],
     pagesSize: any, // Fetch items per scroll
-    lastPosition: number | null = 1
+    nextPageLink: string | null = null
   ) => {
     try {
       let sitePath = this.context.pageContext.web.serverRelativeUrl; // Dynamically gets the server-relative URL of the current site
@@ -385,10 +385,15 @@ class PagesService {
         this.context.pageContext.web.absoluteUrl
       }/_api/web/GetListUsingPath(DecodedUrl=@a1)/RenderListDataAsStream?@a1=%27${encodeURIComponent(
         sitePath + listPath
-      )}%27&TryNewExperienceSingle=TRUE&SortField=${orderBy}&SortDir=${
-        isDescending ? "Desc" : "Asc"
-      }`;
+      )}%27&TryNewExperienceSingle=TRUE`;
 
+      if (nextPageLink) {
+        listUrl += nextPageLink.replace("?", "&");
+      } else {
+        listUrl += `&SortField=${orderBy}&SortDir=${
+          isDescending ? "Desc" : "Asc"
+        }`;
+      }
       // Default fields to include
       const allFieldsSet = new Set<string>();
 
@@ -480,9 +485,7 @@ class PagesService {
           ViewXml: `<View Scope="RecursiveAll">${viewFieldsXML}<Query>${camlQuery}</Query><RowLimit Paged="TRUE">${pagesSize}</RowLimit></View>`,
         },
       };
-      if (lastPosition) {
-        payload.parameters.Paging = `Paged=TRUE&p_ID=${lastPosition}`;
-      }
+
       // Perform the API request
       const response = await this.context.spHttpClient.post(
         filterString ? `${listUrl}&${filterString}` : listUrl,
@@ -496,13 +499,13 @@ class PagesService {
       if (jsonResponse.hasOwnProperty("error")) {
         return { error: jsonResponse.error.message };
       } else {
-        const lastPosition = jsonResponse.Row
-          ? parseInt(jsonResponse.Row[jsonResponse.LastRow - 1].ID)
-          : null;
-
+        let nextPageLink: string | null = null;
+        if (jsonResponse.NextHref) {
+          nextPageLink = jsonResponse.NextHref;
+        }
         return {
           pages: jsonResponse.Row,
-          lastPosition: lastPosition, // Store this for the next request
+          nextPageLink: nextPageLink, // Store this for the next request
         };
       }
     } catch (error) {
