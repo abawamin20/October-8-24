@@ -191,7 +191,7 @@ class PagesService {
   /**
    * Retrieves a page of filtered Site Pages items.
    *
-   * @param orderBy The column to sort the items by. Defaults to "Created".
+   * @param orderBy The column to sort the items by. Defaults to "ModifiedDate".
    * @param isAscending Whether to sort in ascending or descending order. Defaults to true.
    * @param category The current category that is selected by the user
    * @param searchText Text to search for in the Title, Article ID, or Modified columns.
@@ -202,7 +202,7 @@ class PagesService {
    * @returns A promise that resolves with an array of items.
    */
   getFilteredPages = async (
-    orderBy: string = "Created",
+    orderBy: string = "ModifiedDate",
     isAscending: boolean = true,
     category: string = "",
     searchText: string = "",
@@ -285,7 +285,7 @@ class PagesService {
           const endDate = new Date(
             Date.UTC(currentYear - dateRangesIndex + 1, 0, 1)
           ).toISOString(); // January 1st of the next year
-          filterQuery = `ModifiedDate ge datetime'${startDate}' and ModifiedDate le datetime'${endDate}' and ${filterQuery}`;
+          filterQuery = `Modified ge datetime'${startDate}' and Modified le datetime'${endDate}' and ${filterQuery}`;
         }
 
         // Additional filters
@@ -359,6 +359,145 @@ class PagesService {
         return {
           pages: jsonResponse.value,
           fetchednextPageUrl: nextPageLink, // Use next page URL for further pagination
+        };
+      }
+    } catch (error) {
+      console.error("Error fetching filtered pages", error);
+      return { error: "error" };
+    }
+  };
+
+  getFilteredPages2 = async (
+    orderBy: string = "ModifiedDate",
+    isDescending: boolean = false,
+    category: string = "",
+    searchText: string = "",
+    filters: FilterDetail[],
+    columnInfos: IColumnInfo[],
+    pagesSize: any, // Fetch items per scroll
+    lastPosition: number | null = 1
+  ) => {
+    try {
+      let listUrl = `${
+        this.context.pageContext.web.absoluteUrl
+      }/_api/web/GetListUsingPath(DecodedUrl=@a1)/RenderListDataAsStream?@a1=%27%2Fsites%2FDevelopment%2FSitePages%27&TryNewExperienceSingle=TRUE&SortField=${orderBy}&SortDir=${
+        isDescending ? "Desc" : "Asc"
+      }`;
+
+      // Default fields to include
+      const allFieldsSet = new Set<string>();
+
+      // Populate column fields and expand fields from columnInfos
+      columnInfos.forEach((col) => {
+        allFieldsSet.add(col.InternalName);
+      });
+
+      // Required fields
+      const allFields: string[] = [
+        "FileRef",
+        "FileDirRef",
+        "FSObjType",
+        "Title",
+        "Id",
+        "FileLeafRef",
+        "Article_x0020_ID",
+        "Author/Title",
+        "Editor/Title",
+        "KnowledgeBaseLabel",
+        "Modified",
+        "ModifiedDate",
+        "ModifiedBy",
+        "Created",
+        "CreatedDate",
+        "CreatedBy",
+      ];
+      allFieldsSet.forEach((col) => allFields.push(col));
+      let viewFieldsXML = "<ViewFields>";
+      allFieldsSet.forEach((field) => {
+        viewFieldsXML += `<FieldRef Name='${field}' />`;
+      });
+      viewFieldsXML += "</ViewFields>";
+
+      // Build the CAML query structure
+      let camlQuery = `<Where><And><Eq><FieldRef Name='FSObjType'/><Value Type='Number'>0</Value></Eq>`;
+
+      // Filter by KnowledgeBaseLabel (category)
+      if (category) {
+        camlQuery += `<Eq><FieldRef Name='KnowledgeBaseLabel'/><Value Type='Text'>${category}</Value></Eq>`;
+      }
+
+      // Search text filtering
+      if (searchText) {
+        camlQuery += `<Or><Contains><FieldRef Name='Title'/><Value Type='Text'>${searchText}</Value></Contains>
+                  <Eq><FieldRef Name='Article_x0020_ID'/><Value Type='Text'>${searchText}</Value></Eq></Or>`;
+      }
+
+      // Additional filters
+      const buildFilterString = (filters: any[]) => {
+        const filterParts: any[] = [];
+
+        filters.forEach((filter, index) => {
+          if (filter.values.length > 0) {
+            // Iterate through the values of each filter
+            filter.values.forEach((value: any) => {
+              // Create the filter field, value, and type strings
+              const filterField = `FilterField${index + 1}`;
+              const filterValue = `FilterValue${index + 1}`;
+              const filterType = `FilterType${index + 1}`;
+
+              filterParts.push(
+                `${filterField}=${encodeURIComponent(filter.filterColumn)}`
+              );
+              filterParts.push(`${filterValue}=${encodeURIComponent(value)}`);
+              filterParts.push(
+                `${filterType}=${encodeURIComponent(filter.filterColumnType)}`
+              );
+            });
+          }
+        });
+
+        // Join the parts with '&' to create the final string
+        return filterParts.join("&");
+      };
+
+      const filterString = buildFilterString(filters);
+
+      camlQuery += `</And></Where>`;
+
+      // Construct payload for RenderListDataAsStream
+      let payload: {
+        parameters: any;
+      } = {
+        parameters: {
+          AllowMultipleValueFilterForTaxonomyFields: true,
+          AddRequiredFields: false,
+          RequireFolderColoringFields: true,
+          ViewXml: `<View Scope="RecursiveAll">${viewFieldsXML}<Query>${camlQuery}</Query><RowLimit Paged="TRUE">${pagesSize}</RowLimit></View>`,
+        },
+      };
+      if (lastPosition) {
+        payload.parameters.Paging = `Paged=TRUE&p_ID=${lastPosition}`;
+      }
+      // Perform the API request
+      const response = await this.context.spHttpClient.post(
+        filterString ? `${listUrl}&${filterString}` : listUrl,
+        SPHttpClient.configurations.v1,
+        {
+          body: JSON.stringify(payload),
+        }
+      );
+      const jsonResponse = await response.json();
+
+      if (jsonResponse.hasOwnProperty("error")) {
+        return { error: jsonResponse.error.message };
+      } else {
+        const lastPosition = jsonResponse.Row
+          ? parseInt(jsonResponse.Row[jsonResponse.LastRow - 1].ID)
+          : null;
+
+        return {
+          pages: jsonResponse.Row,
+          lastPosition: lastPosition, // Store this for the next request
         };
       }
     } catch (error) {
