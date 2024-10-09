@@ -14,24 +14,26 @@ const CellRender = (props: {
     case "Text":
       return <div>{item[columnName]}</div>;
     case "DateTime":
-      const date = new Date(item[columnName]);
+      if (item[columnName]) {
+        const date = new Date(item[columnName]);
 
-      const optionsDate: any = {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      };
-      const formattedDate = date.toLocaleDateString("en-US", optionsDate);
+        const optionsDate: any = {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        };
+        const formattedDate = date.toLocaleDateString("en-US", optionsDate);
 
-      const optionsTime: any = {
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
-      };
-      const formattedTime = date.toLocaleTimeString("en-US", optionsTime);
+        const optionsTime: any = {
+          hour: "numeric",
+          minute: "numeric",
+          hour12: true,
+        };
+        const formattedTime = date.toLocaleTimeString("en-US", optionsTime);
 
-      const formattedDateTime = `${formattedDate} ${formattedTime}`;
-      return <div>{formattedDateTime}</div>;
+        const formattedDateTime = `${formattedDate} ${formattedTime}`;
+        return <div>{formattedDateTime}</div>;
+      } else return "";
     case "TaxonomyFieldTypeMulti":
       const taxMultiDetails =
         item[columnName] &&
@@ -45,7 +47,10 @@ const CellRender = (props: {
     case "Number":
       return <div>{item[columnName]}</div>;
     case "User":
-      return item[columnName] && <div>{item[columnName].Title}</div>;
+      return (
+        item[columnName] &&
+        item[columnName].length > 0 && <div>{item[columnName][0].title}</div>
+      );
     case "URL":
       return (
         item[columnName] && (
