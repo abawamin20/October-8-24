@@ -14,7 +14,7 @@ import ListForm from "../Forms/ListForm";
 
 interface SuccessResponse {
   pages: any;
-  fetchednextPageUrl: string | null;
+  lastPosition: number | null;
 }
 
 interface ErrorResponse {
@@ -85,7 +85,7 @@ const PagesList = (props: IPagesListProps) => {
   const [scrollTop, setScrollTop] = React.useState<number>(0); // Initially set to empty string
 
   const [hasNextPage, setHasNextPage] = React.useState<boolean>(false);
-  const [nextPageUrl, setNextPageUrl] = React.useState<string | null>(null);
+  const [lastPosition, setLastPosition] = React.useState<number | null>(null);
 
   // The number of items to display per page
   const [pageSize, setPageSize] = React.useState<number>(40); // Initially set to 20
@@ -94,7 +94,7 @@ const PagesList = (props: IPagesListProps) => {
   const [totalItems, setTotalItems] = React.useState<number>(0); // Initially set to 0
 
   // The sorting order
-  const [isDescending, setIsDescending] = React.useState<boolean>(false); // Initially set to false
+  const [isDescending, setIsDescending] = React.useState<boolean>(true); // Initially set to false
 
   // Whether to show the filter panel
   const [showFilter, setShowFilter] = React.useState<boolean>(false); // Initially set to false
@@ -108,18 +108,12 @@ const PagesList = (props: IPagesListProps) => {
   // The filter details
   const [filterDetails, setFilterDetails] = React.useState<FilterDetail[]>([]); // Initially set to empty array
 
-  // The taxonomy filter details
-  const [taxonomyFilters, setTaxonomyFilters] = React.useState<FilterDetail[]>(
-    []
-  );
-
   // The filter details
   const [selectionDetails, setSelectionDetails] = React.useState<any | []>([]);
   // The filter details
   const [listId, setListId] = React.useState<string>("");
   const [currentUser, setCurrentUser] = React.useState<any>(null);
   const [viewId, setViewId] = React.useState<string>("");
-  const [dateRangeIndex, setDateRangeIndex] = React.useState<number>(0);
 
   // Create an instance of the PagesService class
   const pagesService = new PagesService(context);
@@ -132,6 +126,24 @@ const PagesList = (props: IPagesListProps) => {
 
   const subscribeIframeRef = React.useRef<HTMLIFrameElement>(null);
 
+  const updateSubscriptionOfSelectedPage = async () => {
+    try {
+      const selectedItem = selectionDetails[0];
+      const itemKey = `SitePages_${selectedItem.Id}`;
+      const pageTitle = `Site Pages: ${selectedItem.FileLeafRef}`; // Ensure correct page title format
+      const alertResponse = await context.spHttpClient.get(
+        `${context.pageContext.web.absoluteUrl}/_api/web/alerts?$filter=UserId eq ${currentUser.Id} and Title eq '${pageTitle}'`,
+        SPHttpClient.configurations.v1
+      );
+      const alertData = await alertResponse.json();
+
+      // Set subscribed based on the presence of alerts
+      const isSubscribed = alertData.value.length > 0;
+
+      // Update the cache with the fetched status
+      subscriptionCache.set(itemKey, isSubscribed);
+    } catch (error) {}
+  };
   React.useEffect(() => {
     const checkIframeUrl = () => {
       const iframe = subscribeIframeRef.current;
@@ -153,34 +165,18 @@ const PagesList = (props: IPagesListProps) => {
           setTotalItems(0);
           setScrollTop(0);
           setHasNextPage(true);
-          setNextPageUrl(null);
+          setLastPosition(null);
 
           fetchPages(
             pageSize,
-            "Created",
+            "Modified",
             true,
             searchText,
             catagory,
             filterDetails,
-            [],
             columnInfos,
             [],
-            null,
-            dateRangeIndex
-          );
-
-          fetchPages(
-            pageSize,
-            "Created",
-            true,
-            searchText,
-            catagory,
-            filterDetails,
-            [],
-            columnInfos,
-            [],
-            null,
-            dateRangeIndex
+            null
           );
         }
       }
@@ -206,12 +202,11 @@ const PagesList = (props: IPagesListProps) => {
   const resetFilters = () => {
     // Clear the filter details
     setFilterDetails([]);
-    setTaxonomyFilters([]);
     setTotalItems(0);
     setScrollTop(0);
     setHasNextPage(true);
     setPages([]);
-    setNextPageUrl(null);
+    setLastPosition(null);
 
     // Clear the search text
     setSearchText("");
@@ -219,16 +214,14 @@ const PagesList = (props: IPagesListProps) => {
     // Call the fetchPages function with the default arguments
     fetchPages(
       pageSize,
-      "Created",
+      "Modified",
       true,
       "",
       catagory,
       [],
-      [],
       columnInfos,
       [],
-      null,
-      dateRangeIndex
+      null
     );
   };
 
@@ -236,7 +229,7 @@ const PagesList = (props: IPagesListProps) => {
    * Fetches the paginated pages based on the given parameters.
    *
    * @param {number} [pageSizeAmount=pageSize] - The number of items per page. Defaults to the `pageSize` state variable.
-   * @param {string} [sortBy="Created"] - The column to sort by. Defaults to "Created".
+   * @param {string} [sortBy="Modified"] - The column to sort by. Defaults to "Modified".
    * @param {boolean} [isSortedDescending=isDescending] - Whether to sort in descending order. Defaults to the `isDescending` state variable.
    * @param {string} [searchText=""] - The search text to filter by. Defaults to an empty string.
    * @param {string} [category=catagory] - The category to filter by. Defaults to the `catagory` state variable.
@@ -246,26 +239,23 @@ const PagesList = (props: IPagesListProps) => {
    */
   const fetchPages = async (
     pageSizeAmount: number = pageSize, // Always fetch 50 items per request
-    sortBy: string = "Created",
+    sortBy: string = "Modified",
     isSortedDescending: boolean = isDescending,
     searchText: string = "",
     category: string | null = catagory,
     filterDetails: FilterDetail[] = [],
-    taxonomyFilters: FilterDetail[] = [],
     columns: IColumnInfo[] = columnInfos,
     currentPages: any[] = pages,
-    nextPagePaginationUrl: string | null = nextPageUrl,
-    dateRangeIndex: number = 0, // Start date range index from current year
-    isThresholdError: boolean = false // Flag to indicate if we're in a threshold error mode
+    lastPositionFetched: number | null = lastPosition
   ): Promise<any[]> => {
     // Set loading state and clear selection
     setIsLoading(true);
     setSelectionDetails([]);
 
     try {
-      // Fetch pages with current nextPagePaginationUrl or date range
+      // Fetch pages with current lastPositionFetched or date range
       const res: SuccessResponse | ErrorResponse =
-        await pagesService.getFilteredPages(
+        await pagesService.getFilteredPages2(
           sortBy,
           isSortedDescending,
           category as string,
@@ -273,87 +263,32 @@ const PagesList = (props: IPagesListProps) => {
           filterDetails,
           columns,
           pageSizeAmount,
-          nextPagePaginationUrl,
-          isThresholdError ? dateRangeIndex : 0 // Use date range only if in threshold error mode
+          lastPositionFetched
         );
 
-      // Check for errors in the response
-      if ("error" in res) {
-        if (isThresholdErrorOccurred(res)) {
-          // Handle threshold error - retry using date range logic
-          setTotalItems(0);
-          setPages([]);
-          setHasNextPage(false);
-          setNextPageUrl(null);
-          setIsLoading(false);
-
-          // Increment dateRangeIndex for the next fetch
-          setDateRangeIndex(dateRangeIndex + 1); // Update the dateRangeIndex
-
-          // Retry fetching by incrementing dateRangeIndex (going back one year)
-          return await fetchPages(
-            pageSizeAmount,
-            sortBy,
-            isSortedDescending,
-            searchText,
-            category,
-            filterDetails,
-            taxonomyFilters,
-            columns,
-            currentPages,
-            null, // Reset nextPageUrl to start fresh
-            dateRangeIndex + 1, // Fetch from the next year back
-            true // Set threshold error mode
-          );
-        } else {
-          // For non-threshold errors, throw an error
-          throw new Error(res.error);
-        }
-      }
-
-      let { pages: fetchedPages, fetchednextPageUrl } = res as SuccessResponse;
-
-      // Apply taxonomy filters locally if provided
-      if (taxonomyFilters.length > 0) {
-        fetchedPages = applyTaxonomyFilters(fetchedPages, taxonomyFilters);
-      }
+      let { pages: fetchedPages, lastPosition } = res as SuccessResponse;
 
       // Combine the new pages with the current pages
       const finalPages = [...currentPages, ...fetchedPages];
       setPages(finalPages);
       setTotalItems(finalPages.length);
-
-      // If the number of fetched pages is less than 50 and we're not in threshold error mode
-      if (fetchedPages.length < pageSizeAmount && !fetchednextPageUrl) {
-        // Only try to fetch more from date range if we're in threshold error mode
-        // Increment dateRangeIndex to fetch from the previous year
-        setDateRangeIndex(dateRangeIndex + 1); // Update the dateRangeIndex
-        return await fetchPages(
-          pageSizeAmount,
-          sortBy,
-          isSortedDescending,
-          searchText,
-          category,
-          filterDetails,
-          taxonomyFilters,
-          columns,
-          finalPages, // Accumulate fetched pages
-          null, // No nextPageUrl, switch to date range fetching
-          dateRangeIndex + 1, // Fetch from the previous year
-          true // Continue in threshold error mode
-        );
-      }
-
       // Handle nextPageUrl for pagination
-      if (fetchednextPageUrl) {
+      if (lastPosition) {
         setHasNextPage(true);
-        setNextPageUrl(fetchednextPageUrl);
-        setDateRangeIndex(0); // Reset date range index for normal pagination
+        setLastPosition(lastPosition);
       } else {
         // End of pagination if no nextPageUrl
         setHasNextPage(false);
-        setNextPageUrl(null);
+        setLastPosition(null);
       }
+
+      // If the number of fetched pages is less than 50 and we're not in threshold error mode
+      if (fetchedPages.length < pageSizeAmount) {
+        // Only try to fetch more from date range if we're in threshold error mode
+
+        setHasNextPage(false);
+      }
+
       setIsLoading(false);
       return finalPages; // Return all accumulated pages
     } catch (error) {
@@ -362,39 +297,6 @@ const PagesList = (props: IPagesListProps) => {
       setIsLoading(false);
       throw error; // Re-throw error for handling in the calling function
     }
-  };
-
-  /**
-   * Function to detect if the error is related to a threshold (too many items to fetch).
-   * You can adjust this based on how your system returns threshold errors.
-   */
-  const isThresholdErrorOccurred = (error: ErrorResponse) => {
-    return error.error.toLowerCase().indexOf("threshold") != -1; // Adjust this based on your error structure
-  };
-
-  /**
-   * Function to apply taxonomy filters on the fetched pages.
-   */
-  const applyTaxonomyFilters = (
-    pages: any[],
-    taxonomyFilters: FilterDetail[]
-  ) => {
-    if (taxonomyFilters.length === 0) return pages;
-
-    return pages.filter((item) =>
-      taxonomyFilters.every((taxonomyFilter) => {
-        const taxonomyField = item[taxonomyFilter.filterColumn];
-        return (
-          Array.isArray(taxonomyField) &&
-          taxonomyFilter.values.some((filterValue) =>
-            taxonomyField.some(
-              (taxonomyItem: { Label: string }) =>
-                taxonomyItem.Label === filterValue
-            )
-          )
-        );
-      })
-    );
   };
 
   /**
@@ -409,50 +311,31 @@ const PagesList = (props: IPagesListProps) => {
      *
      */
     let currentFilters: FilterDetail[] = filterDetails;
-    let currentTaxonomyFilters: FilterDetail[] = taxonomyFilters;
 
-    if (filterDetail.filterColumnType === "TaxonomyFieldTypeMulti") {
-      if (filterDetail.values.length === 0) {
-        currentTaxonomyFilters = taxonomyFilters.filter(
+    if (filterDetail.values.length === 0) {
+      currentFilters = filterDetails.filter(
+        (item) => item.filterColumn !== filterDetail.filterColumn
+      );
+    } else
+      currentFilters = [
+        ...filterDetails.filter(
           (item) => item.filterColumn !== filterDetail.filterColumn
-        );
-      } else {
-        currentTaxonomyFilters = [
-          ...taxonomyFilters.filter(
-            (item) => item.filterColumn !== filterDetail.filterColumn
-          ),
-          filterDetail,
-        ];
-      }
-    } else {
-      if (filterDetail.values.length === 0) {
-        currentFilters = filterDetails.filter(
-          (item) => item.filterColumn !== filterDetail.filterColumn
-        );
-      } else
-        currentFilters = [
-          ...filterDetails.filter(
-            (item) => item.filterColumn !== filterDetail.filterColumn
-          ),
-          filterDetail,
-        ];
-    }
-    setNextPageUrl(null);
+        ),
+        filterDetail,
+      ];
+    setLastPosition(null);
     setFilterDetails(currentFilters);
-    setTaxonomyFilters(currentTaxonomyFilters);
 
     fetchPages(
       pageSize, // Page size
-      "Created", // Sorting criteria
+      "Modified", // Sorting criteria
       true, // Sorting order (ascending/descending)
       searchText, // Search text
       catagory, // Category (assuming this is another state or prop)
       currentFilters, // Updated filter details,
-      currentTaxonomyFilters,
       columnInfos,
       [],
-      null,
-      dateRangeIndex
+      null
     );
   };
 
@@ -481,11 +364,9 @@ const PagesList = (props: IPagesListProps) => {
       searchText, // Search text
       catagory, // Category (assuming this is another state or prop)
       filterDetails, // Filter details
-      taxonomyFilters,
       columnInfos,
       [],
-      null,
-      dateRangeIndex
+      null
     );
   };
 
@@ -495,16 +376,14 @@ const PagesList = (props: IPagesListProps) => {
   const handleSearch = () => {
     fetchPages(
       pageSize, // Page size
-      "Created", // Sorting criteria
+      "Modified", // Sorting criteria
       true, // Sorting order (ascending/descending)
       searchText, // Search text
       catagory, // Category
       filterDetails, // Filter details
-      taxonomyFilters,
       columnInfos,
       [],
-      null,
-      dateRangeIndex
+      null
     );
   };
 
@@ -529,21 +408,19 @@ const PagesList = (props: IPagesListProps) => {
     setScrollTop(0);
 
     setHasNextPage(true);
-    setNextPageUrl(null);
+    setLastPosition(null);
     // Handle the page change with the new page size
 
     fetchPages(
       e.target.value,
-      "Created",
+      "Modified",
       true,
       searchText,
       catagory,
       filterDetails,
-      [],
       columnInfos,
       [],
-      null,
-      dateRangeIndex
+      null
     );
   };
 
@@ -577,16 +454,14 @@ const PagesList = (props: IPagesListProps) => {
 
           fetchPages(
             pageSize,
-            "Created",
+            "Modified",
             true,
             searchText,
             selectedCategory,
             filterDetails,
-            [],
             columnInfos,
             [],
-            null,
-            dateRangeIndex
+            null
           );
           setSelectionDetails([]);
           setPageSize(pageSize);
@@ -624,16 +499,14 @@ const PagesList = (props: IPagesListProps) => {
         if (catagory && catagory != "") {
           fetchPages(
             pageSize,
-            "Created",
+            "Modified",
             true,
             searchText,
             catagory,
             filterDetails,
-            [],
             col,
             [],
-            null,
-            dateRangeIndex
+            null
           );
         }
       });
@@ -649,7 +522,7 @@ const PagesList = (props: IPagesListProps) => {
           applyFilters={applyFilters}
           dismissPanel={dismissPanel}
           selectedItems={
-            [...filterDetails, ...taxonomyFilters].filter(
+            [...filterDetails].filter(
               (item) => item.filterColumn === filterColumn
             )[0] || { filterColumn: "", values: [] }
           }
@@ -692,6 +565,7 @@ const PagesList = (props: IPagesListProps) => {
                 <DefaultButton
                   className="me-2"
                   onClick={() => {
+                    console.log(selectionDetails[0]);
                     toggleHideAlertMeDialog();
                   }}
                 >
@@ -727,8 +601,7 @@ const PagesList = (props: IPagesListProps) => {
                   </span>
                 </DefaultButton>
               )}
-              {((filterDetails && filterDetails.length > 0) ||
-                (taxonomyFilters && taxonomyFilters.length > 0)) && (
+              {filterDetails && filterDetails.length > 0 && (
                 <DefaultButton
                   onClick={() => {
                     resetFilters();
@@ -773,16 +646,14 @@ const PagesList = (props: IPagesListProps) => {
               hasNextPage &&
                 fetchPages(
                   pageSize,
-                  "Created",
+                  "Modified",
                   true,
                   searchText,
                   catagory,
                   filterDetails,
-                  [],
                   columnInfos,
                   pages,
-                  nextPageUrl,
-                  dateRangeIndex
+                  lastPosition
                 );
             }}
             initialScrollTop={scrollTop}
@@ -875,7 +746,9 @@ const PagesList = (props: IPagesListProps) => {
 
         <DialogFooter>
           <DefaultButton
-            onClick={() => setHideAlertMeDialog(true)}
+            onClick={() => {
+              setHideAlertMeDialog(true);
+            }}
             text="Close"
           />
         </DialogFooter>
@@ -904,17 +777,16 @@ const PagesList = (props: IPagesListProps) => {
 
               fetchPages(
                 pageSize,
-                "Created",
+                "Modified",
                 true,
                 searchText,
                 catagory,
                 filterDetails,
-                [],
                 columnInfos,
                 [],
-                null,
-                dateRangeIndex
+                null
               );
+              updateSubscriptionOfSelectedPage();
             }}
             text="Close"
           />
