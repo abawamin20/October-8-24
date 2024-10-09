@@ -4,7 +4,7 @@ const getColumnMinWidth = (columnInternalName: string): number => {
   const column = WidthDefinition.filter(
     (def) => def.Title === columnInternalName
   );
-  return column.length > 0 ? column[0].Values.MinWidth : 100;
+  return column.length > 0 ? column[0].Values.MinWidth : 200;
 };
 const getColumnMaxWidth = (columnInternalName: string): number => {
   const column = WidthDefinition.filter(
