@@ -14,7 +14,7 @@ import ListForm from "../Forms/ListForm";
 
 interface SuccessResponse {
   pages: any;
-  lastPosition: number | null;
+  nextPageLink: string | null;
 }
 
 interface ErrorResponse {
@@ -85,7 +85,7 @@ const PagesList = (props: IPagesListProps) => {
   const [scrollTop, setScrollTop] = React.useState<number>(0); // Initially set to empty string
 
   const [hasNextPage, setHasNextPage] = React.useState<boolean>(false);
-  const [lastPosition, setLastPosition] = React.useState<number | null>(null);
+  const [nextPageLink, setNextPageLink] = React.useState<string | null>(null);
 
   // The number of items to display per page
   const [pageSize, setPageSize] = React.useState<number>(40); // Initially set to 20
@@ -165,7 +165,7 @@ const PagesList = (props: IPagesListProps) => {
           setTotalItems(0);
           setScrollTop(0);
           setHasNextPage(true);
-          setLastPosition(null);
+          setNextPageLink(null);
 
           fetchPages(
             pageSize,
@@ -206,7 +206,7 @@ const PagesList = (props: IPagesListProps) => {
     setScrollTop(0);
     setHasNextPage(true);
     setPages([]);
-    setLastPosition(null);
+    setNextPageLink(null);
 
     // Clear the search text
     setSearchText("");
@@ -246,7 +246,7 @@ const PagesList = (props: IPagesListProps) => {
     filterDetails: FilterDetail[] = [],
     columns: IColumnInfo[] = columnInfos,
     currentPages: any[] = pages,
-    lastPositionFetched: number | null = lastPosition
+    nextPageLinkFetched: string | null = nextPageLink
   ): Promise<any[]> => {
     // Set loading state and clear selection
     setIsLoading(true);
@@ -263,23 +263,23 @@ const PagesList = (props: IPagesListProps) => {
           filterDetails,
           columns,
           pageSizeAmount,
-          lastPositionFetched
+          nextPageLinkFetched
         );
 
-      let { pages: fetchedPages, lastPosition } = res as SuccessResponse;
+      let { pages: fetchedPages, nextPageLink } = res as SuccessResponse;
 
       // Combine the new pages with the current pages
       const finalPages = [...currentPages, ...fetchedPages];
       setPages(finalPages);
       setTotalItems(finalPages.length);
       // Handle nextPageUrl for pagination
-      if (lastPosition) {
+      if (nextPageLink) {
         setHasNextPage(true);
-        setLastPosition(lastPosition);
+        setNextPageLink(nextPageLink);
       } else {
         // End of pagination if no nextPageUrl
         setHasNextPage(false);
-        setLastPosition(null);
+        setNextPageLink(null);
       }
 
       // If the number of fetched pages is less than 50 and we're not in threshold error mode
@@ -323,7 +323,7 @@ const PagesList = (props: IPagesListProps) => {
         ),
         filterDetail,
       ];
-    setLastPosition(null);
+    setNextPageLink(null);
     setFilterDetails(currentFilters);
 
     fetchPages(
@@ -408,7 +408,7 @@ const PagesList = (props: IPagesListProps) => {
     setScrollTop(0);
 
     setHasNextPage(true);
-    setLastPosition(null);
+    setNextPageLink(null);
     // Handle the page change with the new page size
 
     fetchPages(
@@ -653,7 +653,7 @@ const PagesList = (props: IPagesListProps) => {
                   filterDetails,
                   columnInfos,
                   pages,
-                  lastPosition
+                  nextPageLink
                 );
             }}
             initialScrollTop={scrollTop}
