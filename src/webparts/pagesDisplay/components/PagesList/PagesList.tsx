@@ -88,7 +88,7 @@ const PagesList = (props: IPagesListProps) => {
   const [nextPageLink, setNextPageLink] = React.useState<string | null>(null);
 
   // The number of items to display per page
-  const [pageSize, setPageSize] = React.useState<number>(40); // Initially set to 20
+  const [pageSize, setPageSize] = React.useState<number>(500); // Initially set to 20
 
   // The total number of items
   const [totalItems, setTotalItems] = React.useState<number>(0); // Initially set to 0
@@ -737,7 +737,7 @@ const PagesList = (props: IPagesListProps) => {
           src={`${
             context.pageContext.web.absoluteUrl
           }${subscribeLink}?List=${listId}&Id=${
-            selectionDetails[0] && selectionDetails[0].Id
+            selectionDetails[0] && selectionDetails[0].ID
           }`}
           width="100%"
           height="600px"
