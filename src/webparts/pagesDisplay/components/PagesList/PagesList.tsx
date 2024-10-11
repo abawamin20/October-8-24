@@ -129,14 +129,15 @@ const PagesList = (props: IPagesListProps) => {
   const updateSubscriptionOfSelectedPage = async () => {
     try {
       const selectedItem = selectionDetails[0];
-      const itemKey = `SitePages_${selectedItem.Id}`;
+      const itemKey = `SitePages_${selectedItem.ID}`;
       const pageTitle = `Site Pages: ${selectedItem.FileLeafRef}`; // Ensure correct page title format
       const alertResponse = await context.spHttpClient.get(
         `${context.pageContext.web.absoluteUrl}/_api/web/alerts?$filter=UserId eq ${currentUser.Id} and Title eq '${pageTitle}'`,
         SPHttpClient.configurations.v1
       );
       const alertData = await alertResponse.json();
-
+      console.log(alertData);
+      console.log(itemKey);
       // Set subscribed based on the presence of alerts
       const isSubscribed = alertData.value.length > 0;
 
@@ -155,11 +156,7 @@ const PagesList = (props: IPagesListProps) => {
           currentUrl.indexOf(subscribeLink) === -1
         ) {
           setHideAlertMeDialog(true);
-          const itemKey = `SitePages_${
-            selectionDetails[0] && selectionDetails[0].Id
-          }`;
-
-          subscriptionCache.set(itemKey, true);
+          updateSubscriptionOfSelectedPage();
           setSelectionDetails([]);
           setPages([]);
           setTotalItems(0);
@@ -513,6 +510,8 @@ const PagesList = (props: IPagesListProps) => {
     }
   }, [selectedViewId]);
 
+  console.log(subscriptionCache);
+
   return (
     <div className="w-pageSize0 detail-display">
       {showFilter && (
@@ -565,7 +564,6 @@ const PagesList = (props: IPagesListProps) => {
                 <DefaultButton
                   className="me-2"
                   onClick={() => {
-                    console.log(selectionDetails[0]);
                     toggleHideAlertMeDialog();
                   }}
                 >
