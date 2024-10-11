@@ -84,7 +84,7 @@ const SubscriptionStatus = ({
   const [subscribed, setSubscribed] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
-    const itemKey = `SitePages_${item.Id}`;
+    const itemKey = `SitePages_${item.ID}`;
     // Check if the status is already cached
     if (subscriptionCache.has(itemKey)) {
       setSubscribed(subscriptionCache.get(itemKey) as boolean);
