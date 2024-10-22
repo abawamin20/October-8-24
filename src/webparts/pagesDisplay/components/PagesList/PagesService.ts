@@ -448,21 +448,32 @@ class PagesService {
 
         filters.forEach((filter, index) => {
           if (filter.values.length > 0) {
-            // Iterate through the values of each filter
-            filter.values.forEach((value: any) => {
-              // Create the filter field, value, and type strings
-              const filterField = `FilterField${index + 1}`;
-              const filterValue = `FilterValue${index + 1}`;
-              const filterType = `FilterType${index + 1}`;
+            // Dynamically choose between 'FilterField' vs 'FilterFields' based on the number of values
+            const filterField =
+              filter.values.length > 1
+                ? `FilterFields${index + 1}`
+                : `FilterField${index + 1}`;
+            const filterValue =
+              filter.values.length > 1
+                ? `FilterValues${index + 1}`
+                : `FilterValue${index + 1}`;
+            const filterType =
+              filter.values.length > 1
+                ? `FilterTypes${index + 1}`
+                : `FilterType${index + 1}`;
 
-              filterParts.push(
-                `${filterField}=${encodeURIComponent(filter.filterColumn)}`
-              );
-              filterParts.push(`${filterValue}=${encodeURIComponent(value)}`);
-              filterParts.push(
-                `${filterType}=${encodeURIComponent(filter.filterColumnType)}`
-              );
-            });
+            // Join multiple values with ';#' and encode them
+            const concatenatedValues = filter.values
+              .map((value: any) => encodeURIComponent(value))
+              .join("%3B%23"); // ';#' encoded as %3B%23
+
+            filterParts.push(
+              `${filterField}=${encodeURIComponent(filter.filterColumn)}`
+            );
+            filterParts.push(`${filterValue}=${concatenatedValues}`);
+            filterParts.push(
+              `${filterType}=${encodeURIComponent(filter.filterColumnType)}`
+            );
           }
         });
 
@@ -480,9 +491,9 @@ class PagesService {
       } = {
         parameters: {
           AllowMultipleValueFilterForTaxonomyFields: true,
-          AddRequiredFields: false,
+          AddRequiredFields: true,
           RequireFolderColoringFields: true,
-          ViewXml: `<View Scope="RecursiveAll">${viewFieldsXML}<Query>${camlQuery}</Query><RowLimit Paged="TRUE">${pagesSize}</RowLimit></View>`,
+          ViewXml: `<View Scope="RecursiveAll" Type="HTML">${viewFieldsXML}<Query>${camlQuery}</Query><RowLimit Paged="TRUE">${pagesSize}</RowLimit></View>`,
         },
       };
 
