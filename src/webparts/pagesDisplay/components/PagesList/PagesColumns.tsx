@@ -94,7 +94,10 @@ const SubscriptionStatus = ({
     setSubscribed(false);
     const fetchSubscriptionStatus = async () => {
       try {
-        const pageTitle = `Site Pages: ${item.FileLeafRef}`; // Ensure correct page title format
+        const pageTitle = `Site Pages: ${item.FileLeafRef.replace(
+          /'/g,
+          "''"
+        )}}`; // Ensure correct page title format
         const alertResponse = await context.spHttpClient.get(
           `${context.pageContext.web.absoluteUrl}/_api/web/alerts?$filter=UserId eq ${currentUser.Id} and Title eq '${pageTitle}'`,
           SPHttpClient.configurations.v1
