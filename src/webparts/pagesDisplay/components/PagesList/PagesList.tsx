@@ -166,7 +166,7 @@ const PagesList = (props: IPagesListProps) => {
 
           fetchPages(
             pageSize,
-            "Modified",
+            "ModifiedDate",
             true,
             searchText,
             catagory,
@@ -211,7 +211,7 @@ const PagesList = (props: IPagesListProps) => {
     // Call the fetchPages function with the default arguments
     fetchPages(
       pageSize,
-      "Modified",
+      "ModifiedDate",
       true,
       "",
       catagory,
@@ -226,7 +226,7 @@ const PagesList = (props: IPagesListProps) => {
    * Fetches the paginated pages based on the given parameters.
    *
    * @param {number} [pageSizeAmount=pageSize] - The number of items per page. Defaults to the `pageSize` state variable.
-   * @param {string} [sortBy="Modified"] - The column to sort by. Defaults to "Modified".
+   * @param {string} [sortBy="ModifiedDate"] - The column to sort by. Defaults to "ModifiedDate".
    * @param {boolean} [isSortedDescending=isDescending] - Whether to sort in descending order. Defaults to the `isDescending` state variable.
    * @param {string} [searchText=""] - The search text to filter by. Defaults to an empty string.
    * @param {string} [category=catagory] - The category to filter by. Defaults to the `catagory` state variable.
@@ -236,7 +236,7 @@ const PagesList = (props: IPagesListProps) => {
    */
   const fetchPages = async (
     pageSizeAmount: number = pageSize, // Always fetch 50 items per request
-    sortBy: string = "Modified",
+    sortBy: string = "ModifiedDate",
     isSortedDescending: boolean = isDescending,
     searchText: string = "",
     category: string | null = catagory,
@@ -325,7 +325,7 @@ const PagesList = (props: IPagesListProps) => {
 
     fetchPages(
       pageSize, // Page size
-      "Modified", // Sorting criteria
+      "ModifiedDate", // Sorting criteria
       true, // Sorting order (ascending/descending)
       searchText, // Search text
       catagory, // Category (assuming this is another state or prop)
@@ -373,7 +373,7 @@ const PagesList = (props: IPagesListProps) => {
   const handleSearch = () => {
     fetchPages(
       pageSize, // Page size
-      "Modified", // Sorting criteria
+      "ModifiedDate", // Sorting criteria
       true, // Sorting order (ascending/descending)
       searchText, // Search text
       catagory, // Category
@@ -410,7 +410,7 @@ const PagesList = (props: IPagesListProps) => {
 
     fetchPages(
       e.target.value,
-      "Modified",
+      "ModifiedDate",
       true,
       searchText,
       catagory,
@@ -451,7 +451,7 @@ const PagesList = (props: IPagesListProps) => {
 
           fetchPages(
             pageSize,
-            "Modified",
+            "ModifiedDate",
             true,
             searchText,
             selectedCategory,
@@ -496,7 +496,7 @@ const PagesList = (props: IPagesListProps) => {
         if (catagory && catagory != "") {
           fetchPages(
             pageSize,
-            "Modified",
+            "ModifiedDate",
             true,
             searchText,
             catagory,
@@ -509,8 +509,6 @@ const PagesList = (props: IPagesListProps) => {
       });
     }
   }, [selectedViewId]);
-
-  console.log(subscriptionCache);
 
   return (
     <div className="w-pageSize0 detail-display">
@@ -644,7 +642,7 @@ const PagesList = (props: IPagesListProps) => {
               hasNextPage &&
                 fetchPages(
                   pageSize,
-                  "Modified",
+                  "ModifiedDate",
                   true,
                   searchText,
                   catagory,
@@ -775,7 +773,7 @@ const PagesList = (props: IPagesListProps) => {
 
               fetchPages(
                 pageSize,
-                "Modified",
+                "ModifiedDate",
                 true,
                 searchText,
                 catagory,
@@ -784,7 +782,8 @@ const PagesList = (props: IPagesListProps) => {
                 [],
                 null
               );
-              updateSubscriptionOfSelectedPage();
+
+              subscriptionCache.clear();
             }}
             text="Close"
           />
