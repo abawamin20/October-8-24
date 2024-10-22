@@ -130,7 +130,10 @@ const PagesList = (props: IPagesListProps) => {
     try {
       const selectedItem = selectionDetails[0];
       const itemKey = `SitePages_${selectedItem.ID}`;
-      const pageTitle = `Site Pages: ${selectedItem.FileLeafRef}`; // Ensure correct page title format
+      const pageTitle = `Site Pages: ${selectedItem.FileLeafRef.replace(
+        /'/g,
+        "''"
+      )}}`; // Ensure correct page title format
       const alertResponse = await context.spHttpClient.get(
         `${context.pageContext.web.absoluteUrl}/_api/web/alerts?$filter=UserId eq ${currentUser.Id} and Title eq '${pageTitle}'`,
         SPHttpClient.configurations.v1
